@@ -3,10 +3,8 @@ package com.example.myweather
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
@@ -18,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,8 +35,6 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +51,6 @@ import com.example.myweather.model.ForecastDay
 import com.example.myweather.model.Hour
 import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.util.Date
 import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.S)
@@ -257,7 +253,115 @@ Row {
     }
 }
 
+@Composable
+fun UV(uv: Double?) {
+    val gradient = Brush.linearGradient(
+        listOf(
+            Color(0xff2E335A),
+            Color(0xff1C1B33)
+        )
+    )
+    Column(
+        modifier  = Modifier
+            .size(164.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(gradient)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center
 
+    ){
+        Column(modifier = Modifier.weight(0.6f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.darksun),
+                    contentDescription = null,
+                )
+                Text("UV INDEX", color = colorResource(R.color.tertiary))
+            }
+
+            Column {
+                Text(
+                    uv?.toInt().toString(),
+                    color = colorResource(R.color.white),
+                    fontSize = 24.sp,
+                    modifier = Modifier.padding(top = 10.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Moderate",
+                    color = colorResource(R.color.white),
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(top = 10.dp),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Box(
+                modifier =Modifier.padding(top = 20.dp).fillMaxWidth().height(5.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF8A2BE2),
+                            Color(0xFFFF69B4)
+                        )
+                    )),
+            )
+
+        }
+
+
+    }
+}
+
+
+@Composable
+fun Sunrise(sunrise: String, sunset: String) {
+    val gradient = Brush.linearGradient(
+        listOf(
+            Color(0xff2E335A),
+            Color(0xff1C1B33)
+        )
+    )
+    Column(
+        modifier  = Modifier
+            .size(164.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(gradient)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top
+
+    ){
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.sunrise),
+                    contentDescription = null,
+                )
+                Text("SUNRISE", color = colorResource(R.color.tertiary))
+            }
+            Text(sunrise, color = colorResource(R.color.white), fontSize = 18.sp, modifier = Modifier.padding(top =10.dp), fontWeight = FontWeight.SemiBold)
+
+            Box(
+                modifier =Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.sun),
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+            Text("sunset :${sunset}", color = Color.LightGray, fontSize = 14.sp, modifier = Modifier.padding(top =2.dp))
+
+        }
+    }
+}
 
 @Composable
 fun WeatherItemHour(index:Int, time :Hour) {
@@ -619,6 +723,13 @@ fun BottomView(viewModel: MainViewmodel){
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        item{
+            UV(viewModel.data.value?.current?.uv)
+        }
+        item{
+            Sunrise(viewModel.data.value?.forecast?.forecastday?.get(0)?.astro?.sunrise ?:"",
+                viewModel.data.value?.forecast?.forecastday?.get(0)?.astro?.sunset?:"", )
+        }
         item {
             if(viewModel.data.value?.current?.precipMm ==0.0){
                 Wind(viewModel.data.value?.current?.wind_kph)
