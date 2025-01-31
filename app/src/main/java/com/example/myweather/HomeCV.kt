@@ -1,9 +1,11 @@
 package com.example.myweather
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -28,13 +31,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,11 +49,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.MotionLayout
+import androidx.constraintlayout.compose.ConstraintSet
+import androidx.constraintlayout.compose.ExperimentalMotionApi
 import com.example.myweather.model.ForecastDay
 import com.example.myweather.model.Hour
 import java.text.SimpleDateFormat
@@ -80,7 +91,9 @@ fun HomeView(viewModel: MainViewmodel) {
         start = androidx.compose.ui.geometry.Offset(0f, 0f), // Starting point (top-left)
         end = androidx.compose.ui.geometry.Offset(1000f, 1000f) // Ending point (bottom-right, adjust for rotation)
     )
+    val scaffoldState = rememberBottomSheetScaffoldState()
     BottomSheetScaffold(
+        scaffoldState = scaffoldState,
         sheetContent = {
             Column(
                 modifier = Modifier
@@ -106,7 +119,7 @@ Row {
     AnimatedVisibility(
         viewModel.selectedIndex == 0,
         enter = slideInHorizontally(
-            initialOffsetX = { -300 }, // small slide 300px
+            initialOffsetX = { -300 },
             animationSpec = tween(
                 durationMillis = 400,
                 easing = LinearEasing // interpolator
@@ -216,42 +229,165 @@ Row {
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize()
             )
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 60.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    viewModel.city,
-                    color = Color.White,
-                    fontSize = 34.sp
-                )
-                Text(
-                    "${viewModel.data.value?.current?.temp_c?.toInt()}°C",
-                    color = Color.White,
-                    fontSize = 60.sp
-                )
-
-                Text(
-                    "${viewModel.data.value?.current?.condition?.text}",
-                    color = colorResource(R.color.dark_secondary),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    "H:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.maxtemp_c}°   L:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.mintemp_c}°",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            val progress = animateFloatAsState(
+                targetValue = scaffoldState.bottomSheetState.targetValue.ordinal.toFloat(),
+                   animationSpec = tween(500)
+              )
+//            Column(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(top = 60.dp),
+//                horizontalAlignment = Alignment.CenterHorizontally,
+//                verticalArrangement = Arrangement.spacedBy(4.dp)
+//            ) {
+//               val progress = animateFloatAsState(
+//                   targetValue = scaffoldState.bottomSheetState.targetValue.ordinal.toFloat(),
+//                   animationSpec = tween(500)
+//               )
+////                Text(
+////                    viewModel.city,
+////                    color = Color.White,
+////                    fontSize = 34.sp
+////                )
+//                MotionLayoutText(viewModel.city,progress.value)
+//
+//                Text(
+//                    "${viewModel.data.value?.current?.temp_c?.toInt()}°C",
+//                    color = Color.White,
+//                    fontSize = 60.sp
+//                )
+//
+//                Text(
+//                    "${viewModel.data.value?.current?.condition?.text}",
+//                    color = colorResource(R.color.dark_secondary),
+//                    fontSize = 20.sp,
+//                    fontWeight = FontWeight.SemiBold
+//                )
+//                Text(
+//                    "H:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.maxtemp_c}°   L:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.mintemp_c}°",
+//                    color = Color.White,
+//                    fontSize = 20.sp,
+//                    fontWeight = FontWeight.SemiBold
+//                )
+//            }
+                MotionLayoutText(viewModel, progress = progress.value)
 
 
         }
     }
 }
+
+
+
+@OptIn(ExperimentalMotionApi::class)
+@Composable
+fun MotionLayoutText(viewModel: MainViewmodel, progress: Float) {
+    MotionLayout(
+        start = ConstraintSet {
+            val city = createRefFor("city")
+            val temp = createRefFor("temp")
+            val condition = createRefFor("condition")
+            val minMax = createRefFor("minMax")
+
+            // City positioned slightly from the top
+            constrain(city) {
+                    top.linkTo(parent.top, margin = 50.dp) // A bit from the top
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+                bottom.linkTo(parent.top)
+            }
+
+            // Temp positioned below city
+            constrain(temp) {
+                top.linkTo(city.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+
+            // Condition positioned below temp
+            constrain(condition) {
+                top.linkTo(temp.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+
+            // MinMax positioned below condition
+            constrain(minMax) {
+                top.linkTo(condition.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+        },
+        end = ConstraintSet {
+            val city = createRefFor("city")
+            val temp = createRefFor("temp")
+            val condition = createRefFor("condition")
+            val minMax = createRefFor("minMax")
+
+            // City moves towards the top
+            constrain(city) {
+                top.linkTo(parent.top, margin = 20.dp) // City moves closer to the top
+                start.linkTo(parent.start,) // Align to start with margin
+                end.linkTo(parent.end,) // Align to end with margin
+            // Align to end with margin
+            }
+
+            // Temp still positioned below city
+            constrain(temp) {
+                top.linkTo(city.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+
+            // Condition positioned below temp
+            constrain(condition) {
+                top.linkTo(temp.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+
+            // MinMax positioned below condition
+            constrain(minMax) {
+                top.linkTo(condition.bottom, margin = 8.dp)
+                start.linkTo(parent.start)
+                end.linkTo(parent.end)
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+        progress = progress // Set the initial progress to 0 to start at the "start" constraint set
+    )
+    {
+        Text(
+            text = viewModel.city,
+            color = Color.White,
+            fontSize = 34.sp,
+            modifier = Modifier.layoutId("city")
+        )
+        Text(
+            text = "${viewModel.data.value?.current?.temp_c?.toInt()}°C",
+            color = Color.White,
+            fontSize = 60.sp,
+            modifier = Modifier.layoutId("temp")
+        )
+        Text(
+            text = "${viewModel.data.value?.current?.condition?.text}",
+            color = colorResource(R.color.dark_secondary),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.layoutId("condition")
+        )
+        Text(
+            text = "H:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.maxtemp_c}°   L:${viewModel.data.value?.forecast?.forecastday?.get(0)?.day?.mintemp_c}°",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.layoutId("minMax")
+        )
+    }
+}
+
+
+
 
 @Composable
 fun UV(uv: Double?) {
@@ -282,6 +418,12 @@ fun UV(uv: Double?) {
                 Text("UV INDEX", color = colorResource(R.color.tertiary))
             }
 
+            var uvMode = ""
+            if (uv != null) {
+                if(uv <=3) uvMode = "Low"
+                else if(uv <=6) uvMode = "Moderate"
+                else uvMode = "High"
+            }
             Column {
                 Text(
                     uv?.toInt().toString(),
@@ -291,7 +433,7 @@ fun UV(uv: Double?) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Moderate",
+                    uvMode,
                     color = colorResource(R.color.white),
                     fontSize = 16.sp,
                     modifier = Modifier.padding(top = 10.dp),
